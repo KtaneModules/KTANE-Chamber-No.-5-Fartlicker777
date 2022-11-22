@@ -48,7 +48,7 @@ public class ChamberNoFive : MonoBehaviour
     bool StageTwo;
     bool Sound = true;
     bool CanPress = true;
-    bool AutosolveWait;
+    bool AutosolveWait, autosolving, floodChatAnytime;
 
     Vector3[] BadTrumpets = new Vector3[7];
     Vector3[] Rotationsoftrumpet = new Vector3[7];
@@ -63,7 +63,8 @@ public class ChamberNoFive : MonoBehaviour
 #pragma warning disable 414
     bool TwitchPlaysActive;
 #pragma warning restore 414
-
+    bool playAlternativeTracks = false;
+    ChamberNoFiveSettings localSettings = new ChamberNoFiveSettings();
     void Awake()
     {
         GetComponent<KMBombModule>().OnActivate += Activate;
@@ -80,6 +81,20 @@ public class ChamberNoFive : MonoBehaviour
             Drum.OnInteract += delegate () { DrumPress(Drum); return false; };
         }
         TheTrumpet.OnInteract += delegate () { TheTrumpetPress(); return false; };
+        try
+        {
+            ModConfig<ChamberNoFiveSettings> modSettings = new ModConfig<ChamberNoFiveSettings>("Chamber No 5");
+            localSettings = modSettings.Settings;
+            modSettings.Settings = localSettings;
+            playAlternativeTracks = localSettings.PlayAlternativeTracks;
+            Sound = localSettings.PlaySounds;
+            floodChatAnytime = localSettings.IDoNotCareAboutTwitchPlays;
+        }
+        catch
+        {
+            playAlternativeTracks = false;
+            Sound = true;
+        }
     }
 
     void Start()
@@ -158,7 +173,7 @@ public class ChamberNoFive : MonoBehaviour
         }
         if (Sound)
         {
-            SoundIThink = Audio.PlaySoundAtTransformWithRef("ALittleBit", transform);
+            SoundIThink = Audio.PlaySoundAtTransformWithRef(playAlternativeTracks ? "BGM_TE4" : "ALittleBit", transform);
         }
         StartButton.gameObject.SetActive(false);
         Active = true;
@@ -299,7 +314,13 @@ public class ChamberNoFive : MonoBehaviour
         }
         Used[Dumbass] = true;
         if (_twitchMode)
-            tpAPI["ircConnectionSendMessage"] = "Module " + GetModuleCode() + " (Chamber No. 5) has screen " + Words.text.ToUpperInvariant() + " with letters " + LetterOptions[0].text + " " + LetterOptions[1].text + " " + LetterOptions[2].text + " " + LetterOptions[3].text + ".";
+            TrySendTPMessage("Module " + GetModuleCode() + " (Chamber No. 5) has screen " + Words.text.ToUpperInvariant() + " with letters " + LetterOptions[0].text + " " + LetterOptions[1].text + " " + LetterOptions[2].text + " " + LetterOptions[3].text + ".");
+    }
+
+    void TrySendTPMessage(string message)
+    {
+        if (_twitchMode && (!autosolving || floodChatAnytime))
+            tpAPI["ircConnectionSendMessage"] = message;
     }
 
     void Update()
@@ -313,24 +334,24 @@ public class ChamberNoFive : MonoBehaviour
             {
                 SoundIThink.StopSound();
                 SoundIThink = null;
-                SoundIThink = Audio.PlaySoundAtTransformWithRef("youcanthide1.2x", transform);
+                SoundIThink = Audio.PlaySoundAtTransformWithRef(playAlternativeTracks ? "BGM_TS00" : "youcanthide1.2x", transform);
                 YouCantHide[0] = true;
             }
-            if (TimerNumber <= 30f - 21.89f - 2.28f && !YouCantHide[1] && Sound)
+            if (TimerNumber <= 30f - 21.89f - 2.28f && !YouCantHide[1] && Sound && !playAlternativeTracks)
             {
                 SoundIThink.StopSound();
                 SoundIThink = null;
                 SoundIThink = Audio.PlaySoundAtTransformWithRef("youcanthide1.3x", transform);
                 YouCantHide[1] = true;
             }
-            if (TimerNumber <= 30f - 21.89f - 2.28f - 2.088f && !YouCantHide[2] && Sound)
+            if (TimerNumber <= 30f - 21.89f - 2.28f - 2.088f && !YouCantHide[2] && Sound && !playAlternativeTracks)
             {
                 SoundIThink.StopSound();
                 SoundIThink = null;
                 SoundIThink = Audio.PlaySoundAtTransformWithRef("youcanthide1.4x", transform);
                 YouCantHide[2] = true;
             }
-            if (TimerNumber <= 30f - 21.89f - 2.28f - 2.088f - 1.968f && !YouCantHide[3] && Sound)
+            if (TimerNumber <= 30f - 21.89f - 2.28f - 2.088f - 1.968f && !YouCantHide[3] && Sound && !playAlternativeTracks)
             {
                 SoundIThink.StopSound();
                 SoundIThink = null;
@@ -368,6 +389,7 @@ public class ChamberNoFive : MonoBehaviour
                 }
                 if (!CanPress)
                     CanPress = true;
+                Timer.text = "0:00.00";
             }
         }
         else
@@ -426,6 +448,13 @@ public class ChamberNoFive : MonoBehaviour
                 }
             }
         }
+    }
+
+    public class ChamberNoFiveSettings
+    {
+        public bool PlayAlternativeTracks = false;
+        public bool PlaySounds = true;
+        public bool IDoNotCareAboutTwitchPlays = false;
     }
 
     private string GetModuleCode()
@@ -493,6 +522,7 @@ public class ChamberNoFive : MonoBehaviour
 
     IEnumerator TwitchHandleForcedSolve()
     {
+        autosolving = true;
         if (!StageTwo && !Active)
         {
             StartButton.OnInteract();
